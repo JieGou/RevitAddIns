@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29102.190
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33103.184
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteriorElevationsGoal2", "InteriorElevationsGoal2\InteriorElevationsGoal2.csproj", "{E2EE78E0-B569-4288-B6EB-C9F6AFB48609}"
 EndProject
@@ -16,6 +16,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteriorElevations", "InteriorElevations\InteriorElevations.csproj", "{0CBAB352-CAA2-4E0A-B8B7-2F0FF0A052D7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateExteriorElevationsGoal1", "CreateExteriorElevationsGoal1\CreateExteriorElevationsGoal1.csproj", "{D4A2EE8B-50BA-4250-830C-B92BCE68802A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateLevelsFromExcel", "CreateLevelsFromExcel\CreateLevelsFromExcel.csproj", "{DE00B7D3-267B-474E-A55C-D893DA1646C7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{D4A2EE8B-50BA-4250-830C-B92BCE68802A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D4A2EE8B-50BA-4250-830C-B92BCE68802A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D4A2EE8B-50BA-4250-830C-B92BCE68802A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE00B7D3-267B-474E-A55C-D893DA1646C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE00B7D3-267B-474E-A55C-D893DA1646C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE00B7D3-267B-474E-A55C-D893DA1646C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE00B7D3-267B-474E-A55C-D893DA1646C7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

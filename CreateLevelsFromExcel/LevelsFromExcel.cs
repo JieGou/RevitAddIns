@@ -13,7 +13,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program. If not, see<https://www.gnu.org/licenses/> 
+along with this program. If not, see<https://www.gnu.org/licenses/>
 */
 
 using Autodesk.Revit.ApplicationServices;
@@ -31,10 +31,9 @@ using Excel = Microsoft.Office.Interop.Excel;
 namespace LM2.Revit
 {
     [Transaction(TransactionMode.Manual)]
-
     public class LevelsFromExcel : IExternalCommand
     {
-        Autodesk.Revit.ApplicationServices.Application application;
+        private Autodesk.Revit.ApplicationServices.Application application;
 
         private void Debug(string msg)
         {
@@ -67,7 +66,6 @@ namespace LM2.Revit
                     tx.Commit();
                 }
             }
-
             catch (Exception ex)
             {
                 message = ex.ToString();
@@ -78,11 +76,11 @@ namespace LM2.Revit
         }
 
         //gets data from excel and updates the lists that are storing the level names and the level heights
-        private void ReadExcel(string fileLocation, string sheetName, List<string> levelNames, List<string>levelHeights)
+        private void ReadExcel(string fileLocation, string sheetName, List<string> levelNames, List<string> levelHeights)
         {
             Excel.Application xlApp = new Excel.Application();
             Excel.Workbook xlWorkbook = xlApp.Workbooks.Open(fileLocation);
-            Excel._Worksheet xlWorksheet = xlWorkbook.Sheets[sheetName];
+            Excel._Worksheet xlWorksheet = (Excel._Worksheet)xlWorkbook.Sheets[sheetName];
             Excel.Range xlRange = xlWorksheet.UsedRange;
 
             int rowCount = xlRange.Rows.Count;
@@ -91,20 +89,20 @@ namespace LM2.Revit
             //start a i=2 to skip the first row which will be the header, excel ranges are not zero based
             for (int i = 2; i <= rowCount; i++)
             {
-                if (xlRange.Cells[i, "A"] != null && !string.IsNullOrEmpty(xlRange.Cells[i, "A"].Text as String))
+                if (xlRange.Cells[i, "A"] != null && !string.IsNullOrEmpty(((Excel.Range)xlRange.Cells[i, "A"]).Text as String))
                 {
                     this.Debug($"Read level name cell A{i}");
-                    levelNames.Add(xlRange.Cells[i, "A"].Text as String);
+                    levelNames.Add(((Excel.Range)xlRange.Cells[i, "A"]).Text as String);
                 }
             }
 
             //add level heights to list
             for (int i = 2; i <= rowCount; i++)
             {
-                if (xlRange.Cells[i, "B"] != null && !string.IsNullOrEmpty(xlRange.Cells[i, "B"].Text as String))
+                if (xlRange.Cells[i, "B"] != null && !string.IsNullOrEmpty(((Excel.Range)xlRange.Cells[i, "B"]).Text as String))
                 {
                     this.Debug($"Read level height cell B{i}");
-                    levelHeights.Add(xlRange.Cells[i, "B"].Text as String);
+                    levelHeights.Add(((Excel.Range)xlRange.Cells[i, "B"]).Text as String);
                 }
             }
 
@@ -125,7 +123,7 @@ namespace LM2.Revit
             Marshal.ReleaseComObject(xlApp);
         }
 
-        public void CreateLevels (Document doc, List<string> levelNames, List<string>levelHeights)
+        public void CreateLevels(Document doc, List<string> levelNames, List<string> levelHeights)
         {
             for (int i = 0; i < levelHeights.Count; i++)
             {
