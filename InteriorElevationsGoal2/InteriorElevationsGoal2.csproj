@@ -66,5 +66,8 @@
       <Version>2019.0.0</Version>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="DocumentImages\ElevationViewCoordinateSystems.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
