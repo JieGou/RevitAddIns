@@ -32,18 +32,15 @@ namespace LM2.Revit
             List<RibbonPanel> allRibbonPanels = application.GetRibbonPanels(tabName);
             foreach (RibbonPanel rp in allRibbonPanels)
             {
-
                 if (rp.Name == "Elevations")
                 {
                     AddPushButton(rp);
                     return Result.Succeeded;
                 }
-
             }
             RibbonPanel elevPanel = application.CreateRibbonPanel(tabName, "Elevations");
             AddPushButton(elevPanel);
             return Result.Succeeded;
-
         }
 
         private void AddPushButton(RibbonPanel elevPanel)
@@ -58,6 +55,5 @@ namespace LM2.Revit
             System.Diagnostics.Debug.WriteLine(imgUri);
             placeExtElevButton.LargeImage = new BitmapImage(new Uri(imgUri, UriKind.Absolute));
         }
-
     }
 }

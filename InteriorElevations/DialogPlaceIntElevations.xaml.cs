@@ -95,8 +95,6 @@ namespace LM2.Revit
             lineStyleTypeBox.ItemsSource = lineStyleList.OrderBy(l => l.Name).ToList();
             lineStyleTypeBox.DisplayMemberPath = "Name";
             lineStyleTypeBox.SelectedValuePath = "Id";
-
-
         }
 
         private void Cancel_Button_Click(object sender, RoutedEventArgs e)

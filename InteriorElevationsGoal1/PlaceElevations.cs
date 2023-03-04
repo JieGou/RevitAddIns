@@ -13,7 +13,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program. If not, see<https://www.gnu.org/licenses/> 
+along with this program. If not, see<https://www.gnu.org/licenses/>
 */
 
 using Autodesk.Revit.ApplicationServices;
@@ -31,16 +31,15 @@ namespace LM2.Revit
     [Transaction(TransactionMode.Manual)]
     public class InteriorElevationsGoal1 : IExternalCommand
     {
-        Application application;
+        private Application application;
 
-        private void Debug (string msg)
+        private void Debug(string msg)
         {
             this.application.WriteJournalComment(msg, true);
         }
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-
             UIDocument UIdoc = commandData.Application.ActiveUIDocument;
             Document doc = UIdoc.Document;
 
@@ -78,7 +77,6 @@ namespace LM2.Revit
 
                         tx.Commit();
                     }
-                    
                 }
             }
             catch (Exception ex)
@@ -125,7 +123,6 @@ namespace LM2.Revit
             }
             Debug($"level ids of view and room are not equal");
             return null;
-
         }
 
         public List<ViewPlan> DocumentElevPlanViews(Document doc)
@@ -133,17 +130,15 @@ namespace LM2.Revit
             List<ViewPlan> viewIntElevPlans = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewPlan))
                 .Cast<ViewPlan>()
-                .Where(x => x.Name.Contains("Interior Elevations"))
+                .Where(x => x.Name.Contains("标高 1"))
                 .ToList();
-  
 
-            if (viewIntElevPlans == null)
+            if (viewIntElevPlans == null || !viewIntElevPlans.Any())
             {
                 throw new Exception("Cannot find View Plans where name containts 'Interior Elevations'");
             }
 
             return viewIntElevPlans;
-
         }
 
         public ElementId FindFamilyTypeId(Document doc)
@@ -151,7 +146,7 @@ namespace LM2.Revit
             ViewFamilyType viewFamilyTypeInterior = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewFamilyType))
                 .Cast<ViewFamilyType>()
-                .FirstOrDefault(x => x.ViewFamily == ViewFamily.Elevation && x.Name.Contains("Interior"));
+                .FirstOrDefault(x => x.ViewFamily == ViewFamily.Elevation && x.Name.Contains("立面"));
             if (viewFamilyTypeInterior == null)
             {
                 throw new Exception("Cannot find View Family Type containing name Interior ");
@@ -159,7 +154,5 @@ namespace LM2.Revit
 
             return viewFamilyTypeInterior.Id;
         }
-
     }
-
 }

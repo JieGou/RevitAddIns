@@ -13,7 +13,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program. If not, see<https://www.gnu.org/licenses/> 
+along with this program. If not, see<https://www.gnu.org/licenses/>
 */
 
 using Autodesk.Revit.ApplicationServices;
@@ -33,11 +33,10 @@ namespace LM2.Revit
         private static Func<Curve, string> serializeCurve = c => "[" + c.GetEndPoint(0) + "," + c.GetEndPoint(1) + "]";
         private static Func<IEnumerable<Curve>, string> serializeCurves = cs => String.Join(",", cs.Select(serializeCurve));
 
-        Application application;
+        private Application application;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-
             UIDocument UIdoc = commandData.Application.ActiveUIDocument;
             Document doc = UIdoc.Document;
 
@@ -69,18 +68,16 @@ namespace LM2.Revit
                     {
                         tx.Start("Place Elevations");
 
-                        List<ViewSection> placedIntElev = PlaceElevations(doc, roomCenter, intElevPlanOfRoom);
-                        foreach (ViewSection ie in placedIntElev)
+                        List<ViewSection> elevations = PlaceElevations(doc, roomCenter, intElevPlanOfRoom);
+                        foreach (ViewSection elevation in elevations)
                         {
-                            AssignViewTemplate(intElevTemplate, ie);
-                            BoundingBoxXYZ roombb = SetCropBox(ie, r);
-                            CreateFilledRegion(doc, ie, roombb);
-
+                            AssignViewTemplate(intElevTemplate, elevation);
+                            BoundingBoxXYZ roombb = SetCropBox(elevation, r);
+                            CreateFilledRegion(doc, elevation, roombb);
                         }
 
                         tx.Commit();
                     }
-                    
                 }
             }
             catch (Exception ex)
@@ -92,10 +89,8 @@ namespace LM2.Revit
             return Result.Succeeded;
         }
 
-
         public List<CurveLoop> FilledRegionBoundary(ViewSection intElev)
         {
-
             BoundingBoxXYZ iecb = intElev.CropBox;
 
             XYZ cbboundsmin = iecb.get_Bounds(0);
@@ -208,93 +203,97 @@ namespace LM2.Revit
                     && f.IsMasking == true)
                 .Select(f => f.Id)
                 .FirstOrDefault();
+            if (filledRegionTypeId != null)
+            {
+                FilledRegion region = FilledRegion.Create(doc, filledRegionTypeId, intElev.Id, filledRegionBoundaries);
+                // set lineweight
 
-            FilledRegion region = FilledRegion.Create(doc, filledRegionTypeId, intElev.Id, filledRegionBoundaries);
-            // set lineweight
-
-            Element lineStyle = FilledRegion.GetValidLineStyleIdsForFilledRegion(doc)
-                .Select(id => doc.GetElement(id))
-                .Where(el => el.Name.Contains("05") && el.Name.ToLower().Contains("solid"))
-                .FirstOrDefault();
-
-
-            region.SetLineStyleId(lineStyle.Id);
-
+                Element lineStyle = FilledRegion.GetValidLineStyleIdsForFilledRegion(doc)
+                    .Select(id => doc.GetElement(id))
+                    .FirstOrDefault(el => el.Name.Contains("05") && el.Name.ToLower().Contains("实线"));
+                if (lineStyle != null)
+                {
+                    region.SetLineStyleId(lineStyle.Id);
+                }
+            }
         }
 
-        public BoundingBoxXYZ SetCropBox(ViewSection intElev, Room r)
+        //From https://lm2.me/post/2019/11/15/resizingcropboxes
+        //<image url="$(ProjectDir)\DocumentImages\ElevationViewCoordinateSystems.png" scale="0.5"/>
+        /// <summary>
+        /// 调整裁剪框
+        /// </summary>
+        /// <param name="elevationView">立面视图</param>
+        /// <param name="r">房间</param>
+        /// <returns></returns>
+        public BoundingBoxXYZ SetCropBox(ViewSection elevationView, Room r)
         {
-            BoundingBoxXYZ iecb = intElev.CropBox;
-            XYZ cbboundsmin = iecb.get_Bounds(0);
-            XYZ cbboundsmax = iecb.get_Bounds(1);
+            //立面原始裁剪框范围
+            BoundingBoxXYZ evBb = elevationView.CropBox;
+            XYZ cbBoundsMin = evBb.get_Bounds(0);
+            XYZ cbBoundsMax = evBb.get_Bounds(1);
 
+            //房间范围
             BoundingBoxXYZ rbb = r.get_BoundingBox(null);
-            XYZ rbbmin = rbb.get_Bounds(0);
-            XYZ rbbmax = rbb.get_Bounds(1);
+            //房间最小点
+            XYZ rbbMin = rbb.get_Bounds(0);
+            //房间最大点
+            XYZ rbbMax = rbb.get_Bounds(1);
 
-            double[][] transform = Matrix.transform2matrix(iecb.Transform);
-
-            XYZ rbbmintransformed = new XYZ
+            //立面视图旋转矩阵
+            double[][] elevationViewTrans = Matrix.transform2matrix(evBb.Transform);
+            //房间最小点转换到立面
+            XYZ rbbMinTransformed = new XYZ
             (
-                rbbmin.X * transform[0][0] + rbbmin.Y * transform[0][1] + rbbmin.Z * transform[0][2],
-                rbbmin.X * transform[1][0] + rbbmin.Y * transform[1][1] + rbbmin.Z * transform[1][2],
-                rbbmin.X * transform[2][0] + rbbmin.Y * transform[2][1] + rbbmin.Z * transform[2][2]
+                rbbMin.X * elevationViewTrans[0][0] + rbbMin.Y * elevationViewTrans[0][1] + rbbMin.Z * elevationViewTrans[0][2],
+                rbbMin.X * elevationViewTrans[1][0] + rbbMin.Y * elevationViewTrans[1][1] + rbbMin.Z * elevationViewTrans[1][2],
+                rbbMin.X * elevationViewTrans[2][0] + rbbMin.Y * elevationViewTrans[2][1] + rbbMin.Z * elevationViewTrans[2][2]
+            );
+            //房间最大点转换到立面
+            XYZ rbbMaxTransformed = new XYZ
+            (
+                rbbMax.X * elevationViewTrans[0][0] + rbbMax.Y * elevationViewTrans[0][1] + rbbMax.Z * elevationViewTrans[0][2],
+                rbbMax.X * elevationViewTrans[1][0] + rbbMax.Y * elevationViewTrans[1][1] + rbbMax.Z * elevationViewTrans[1][2],
+                rbbMax.X * elevationViewTrans[2][0] + rbbMax.Y * elevationViewTrans[2][1] + rbbMax.Z * elevationViewTrans[2][2]
             );
 
-            XYZ rbbmaxtransformed = new XYZ
-            (
-                rbbmax.X * transform[0][0] + rbbmax.Y * transform[0][1] + rbbmax.Z * transform[0][2],
-                rbbmax.X * transform[1][0] + rbbmax.Y * transform[1][1] + rbbmax.Z * transform[1][2],
-                rbbmax.X * transform[2][0] + rbbmax.Y * transform[2][1] + rbbmax.Z * transform[2][2]
-            );
+            #region 重新构造最小点 最大点
 
-            double minX = rbbmintransformed.X < rbbmaxtransformed.X ? rbbmintransformed.X : rbbmaxtransformed.X;
-            double minY = rbbmintransformed.Y < rbbmaxtransformed.Y ? rbbmintransformed.Y : rbbmaxtransformed.Y;
+            double minX = rbbMinTransformed.X < rbbMaxTransformed.X ? rbbMinTransformed.X : rbbMaxTransformed.X;
+            double minY = rbbMinTransformed.Y < rbbMaxTransformed.Y ? rbbMinTransformed.Y : rbbMaxTransformed.Y;
 
-            double maxX = rbbmintransformed.X > rbbmaxtransformed.X ? rbbmintransformed.X : rbbmaxtransformed.X;
-            double maxY = rbbmintransformed.Y > rbbmaxtransformed.Y ? rbbmintransformed.Y : rbbmaxtransformed.Y;
-            
-            XYZ rbbboundsmin = new XYZ(
-                minX,
-                minY,
-                cbboundsmin.Z);
-            XYZ rbbboundsmax = new XYZ(
-                maxX,
-                maxY,
-                cbboundsmax.Z);
+            double maxX = rbbMinTransformed.X > rbbMaxTransformed.X ? rbbMinTransformed.X : rbbMaxTransformed.X;
+            double maxY = rbbMinTransformed.Y > rbbMaxTransformed.Y ? rbbMinTransformed.Y : rbbMaxTransformed.Y;
 
+            #endregion 重新构造最小点 最大点
 
-            BoundingBoxXYZ rbbtransformed = new BoundingBoxXYZ();
-            rbbtransformed.set_Bounds(0, rbbboundsmin);
-            rbbtransformed.set_Bounds(1, rbbboundsmax);
+            //最小点偏移后
+            XYZ rbbBoundsMinExtended = new XYZ(minX - 1, minY - 1, cbBoundsMin.Z);
+            //最大点偏移后
+            XYZ rbbBoundsMaxExtended = new XYZ(maxX + 1, maxY + 1, cbBoundsMax.Z);
 
-
-            XYZ rbbboundsminextended = new XYZ(
-                minX - 1,
-                minY - 1,
-                cbboundsmin.Z);
-            XYZ rbbboundsmaxextended = new XYZ(
-                maxX + 1,
-                maxY + 1,
-                cbboundsmax.Z);
-
-           
-            intElev.CropBox.Min = rbbboundsminextended;
-            intElev.CropBox.Max = rbbboundsmaxextended;
-            iecb.set_Bounds(0, rbbboundsminextended);
-            iecb.set_Bounds(1, rbbboundsmaxextended);
-            intElev.CropBox = iecb;
-            intElev.CropBoxVisible = false;
+            evBb.Min = rbbBoundsMinExtended;
+            evBb.Max = rbbBoundsMaxExtended;
+            elevationView.CropBox = evBb;
 
             return rbb;
         }
 
+        /// <summary>
+        /// 设置立面视图样板
+        /// </summary>
+        /// <param name="viewTemplate">视图样板</param>
+        /// <param name="intElev">立面视图</param>
         public void AssignViewTemplate(View viewTemplate, ViewSection intElev)
         {
+            if (viewTemplate == null)
+            {
+                return;
+            }
             intElev.ViewTemplateId = viewTemplate.Id;
         }
 
-        public View GetViewtemplate(Document doc) 
+        public View GetViewtemplate(Document doc)
         {
             //add pop up to select interior elevation view template
             View viewTemplate = new FilteredElementCollector(doc)
@@ -306,10 +305,15 @@ namespace LM2.Revit
             return viewTemplate;
         }
 
+        /// <summary>
+        /// 放置立面
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <param name="center">立面ElevationMarker原点</param>
+        /// <param name="intElevPlan">放置立面所在的平面视图</param>
+        /// <returns></returns>
         public List<ViewSection> PlaceElevations(Document doc, XYZ center, ViewPlan intElevPlan)
         {
-            //add pop up to input scale
-            //current scale set to 1/8"
             ElevationMarker marker = ElevationMarker.CreateElevationMarker(doc, FindFamilyTypeId(doc), center, 96);
             Parameter p = intElevPlan.get_Parameter(BuiltInParameter.VIEW_PHASE);
             marker.get_Parameter(BuiltInParameter.PHASE_CREATED).Set(p.AsElementId());
@@ -320,6 +324,7 @@ namespace LM2.Revit
                 if (marker.IsAvailableIndex(markerindex))
                 {
                     ViewSection intElev = marker.CreateElevation(doc, intElevPlan.Id, markerindex);
+                    //设置视图的阶段
                     intElev.get_Parameter(BuiltInParameter.VIEW_PHASE).Set(p.AsElementId());
                     intElevList.Add(intElev);
                 }
@@ -335,15 +340,13 @@ namespace LM2.Revit
                 Room RoominView = new FilteredElementCollector(doc, vp.Id)
                     .OfClass(typeof(SpatialElement))
                     .Select(e => e as Room)
-                    .Where(e => e != null && e.Id.IntegerValue == r.Id.IntegerValue)
-                    .FirstOrDefault();
+                    .FirstOrDefault(e => e != null && e.Id.IntegerValue == r.Id.IntegerValue);
                 if (RoominView != null)
                 {
                     return vp;
                 }
             }
             return null;
-
         }
 
         public List<ViewPlan> DocumentElevPlanViews(Document doc)
@@ -351,9 +354,8 @@ namespace LM2.Revit
             List<ViewPlan> viewIntElevPlans = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewPlan))
                 .Cast<ViewPlan>()
-                .Where(x => x.Name.Contains("Interior Elevations"))
+                .Where(x => x.Name.Contains("标高 1"))
                 .ToList();
-  
 
             if (viewIntElevPlans == null)
             {
@@ -361,7 +363,6 @@ namespace LM2.Revit
             }
 
             return viewIntElevPlans;
-
         }
 
         public ElementId FindFamilyTypeId(Document doc)
@@ -369,7 +370,7 @@ namespace LM2.Revit
             ViewFamilyType viewFamilyTypeInterior = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewFamilyType))
                 .Cast<ViewFamilyType>()
-                .FirstOrDefault(x => x.ViewFamily == ViewFamily.Elevation && x.Name.Contains("Interior"));
+                .FirstOrDefault(x => x.ViewFamily == ViewFamily.Elevation && x.Name.Contains("立面"));
             if (viewFamilyTypeInterior == null)
             {
                 throw new Exception("Cannot find View Family Type containing name Interior ");
@@ -377,7 +378,5 @@ namespace LM2.Revit
 
             return viewFamilyTypeInterior.Id;
         }
-        
     }
-
 }

@@ -13,7 +13,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program. If not, see<https://www.gnu.org/licenses/> 
+along with this program. If not, see<https://www.gnu.org/licenses/>
 */
 
 using Autodesk.Revit.ApplicationServices;
@@ -30,10 +30,9 @@ using System.Windows;
 namespace LM2.Revit
 {
     [Transaction(TransactionMode.Manual)]
-
     public class PlaceExteriorElevations : IExternalCommand
     {
-        Autodesk.Revit.ApplicationServices.Application application;
+        private Autodesk.Revit.ApplicationServices.Application application;
 
         private void Debug(string msg)
         {
@@ -42,7 +41,6 @@ namespace LM2.Revit
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-
             UIDocument UIdoc = commandData.Application.ActiveUIDocument;
             Document doc = UIdoc.Document;
 
@@ -73,7 +71,6 @@ namespace LM2.Revit
                 {
                     userWallSelection.Add(w);
                 }
-
             }
 
             if (0 == userWallSelection.Count)
@@ -85,6 +82,9 @@ namespace LM2.Revit
             //user wall selction
             List<Wall> wallsToUse = userWallSelection;
             Debug($"Received {wallsToUse.Count} walls");
+
+            //获取视图样板
+            View templateView = GetElevationViewTemplate(doc, "20出图_NS_立面");
 
             using (Transaction tx = new Transaction(doc))
             {
@@ -98,7 +98,7 @@ namespace LM2.Revit
 
                     this.Debug("wall LevelId" + w.LevelId);
 
-                    using (ElevationMarker marker = PlaceMarker(doc, elevMarkerPosition, w))
+                    using (ElevationMarker marker = PlaceMarker(doc, elevMarkerPosition, w, templateView))
                     {
                         XYZ elevViewSectionNormal = GetViewSectionNormal(doc, marker);
                         double angleViewtoWall = GetAngleViewtoWall(elevViewSectionNormal, w);
@@ -116,18 +116,14 @@ namespace LM2.Revit
             }
 
             return Result.Succeeded;
-
         }
 
         public XYZ GetElevationMarkerPosition(Wall w)
         {
-
             LocationCurve wallCurve = w.Location as LocationCurve;
             XYZ wallCenter;
             XYZ offsetCenter;
             XYZ wNormal;
-
-
 
             if ((wallCurve.Curve as Arc) != null)
             {
@@ -145,12 +141,11 @@ namespace LM2.Revit
                 this.Debug("wNormalAngle " + wNormalAngle);
                 this.Debug("angleLineEP1EP2 " + angleLineEP1EP2);
 
-                wNormalAngle = - (wNormalAngle - angleLineEP1EP2);
+                wNormalAngle = -(wNormalAngle - angleLineEP1EP2);
                 this.Debug("wNormalAngle 2" + wNormalAngle);
 
                 if (concave)
                 {
-
                     double[][] rotationMatrix = Matrix.ZAxisRotation(wNormalAngle);
                     double[] orientaitonMatrix = Matrix.xyz2matrix(w.Orientation);
                     double[] rotatedMatrix = Matrix.dot(rotationMatrix, orientaitonMatrix);
@@ -163,7 +158,6 @@ namespace LM2.Revit
                         CWEP1.Z);
                     this.Debug("wallCenter arc concave" + wallCenter);
                 }
-
                 else
                 {
                     if (w.CurtainGrid != null)
@@ -172,7 +166,7 @@ namespace LM2.Revit
                     }
 
                     //use negative wNormalAngle because we rotate around Z axis which is normally counter clockwise but when rotating marker around Z direction, it is clockwise
-                    double[][] rotationMatrix = Matrix.ZAxisRotation(- wNormalAngle);
+                    double[][] rotationMatrix = Matrix.ZAxisRotation(-wNormalAngle);
                     double[] orientaitonMatrix = Matrix.xyz2matrix(w.Orientation);
                     double[] rotatedMatrix = Matrix.dot(rotationMatrix, orientaitonMatrix);
                     wNormal = Matrix.matrix2xyz(rotatedMatrix);
@@ -190,7 +184,6 @@ namespace LM2.Revit
 
                 this.Debug("wall center arc" + wallCenter);
             }
-
             else
             {
                 XYZ EP1 = wallCurve.Curve.GetEndPoint(0);
@@ -215,7 +208,6 @@ namespace LM2.Revit
                 }
 
                 this.Debug("wall normal" + wNormal);
-
             }
 
             offsetCenter = new XYZ(
@@ -226,7 +218,7 @@ namespace LM2.Revit
             return offsetCenter;
         }
 
-        public ElevationMarker PlaceMarker(Document doc, XYZ elevMarkerPosition, Wall w)
+        public ElevationMarker PlaceMarker(Document doc, XYZ elevMarkerPosition, Wall w, View template = null)
         {
             ViewPlan plan = DocumentElevPlanViews(doc, w);
             Parameter p = plan.get_Parameter(BuiltInParameter.VIEW_PHASE);
@@ -241,21 +233,21 @@ namespace LM2.Revit
 
             if (marker.IsAvailableIndex(0))
             {
-                ViewSection extElev = marker.CreateElevation(doc, plan.Id, 0);
-                extElev.get_Parameter(BuiltInParameter.VIEW_PHASE).Set(p.AsElementId());
+                ViewSection elevationView = marker.CreateElevation(doc, plan.Id, 0);
+                elevationView.get_Parameter(BuiltInParameter.VIEW_PHASE).Set(p.AsElementId());
 
+                //设定视图样板:20出图_NS_⽴⾯
+                if (template != null) elevationView.get_Parameter(BuiltInParameter.VIEW_TEMPLATE).Set(template.Id);
             }
 
             return marker;
         }
-
 
         public XYZ GetViewSectionNormal(Document doc, ElevationMarker marker)
         {
             ViewSection elevViewSection = (ViewSection)doc.GetElement(marker.GetViewId(0));
 
             double[][] transform = Matrix.transform2matrix(elevViewSection.CropBox.Transform);
-            
 
             XYZ cbMinT = Matrix.matrix2xyz(Matrix.dot(transform, Matrix.xyz2matrix(elevViewSection.CropBox.Min)));
             XYZ cbMaxT = Matrix.matrix2xyz(Matrix.dot(transform, Matrix.xyz2matrix(elevViewSection.CropBox.Max)));
@@ -280,7 +272,7 @@ namespace LM2.Revit
             return elevViewSectionNormal;
         }
 
-        public double NormalofCurvedWall (Wall w, out bool concave)
+        public double NormalofCurvedWall(Wall w, out bool concave)
         {
             //Only works for curved walls that have not been rotated since they were placed, if the walls were rotated, find you need to consider the wall's transform
             LocationCurve wallCurve = w.Location as LocationCurve;
@@ -306,7 +298,6 @@ namespace LM2.Revit
                 concave = false;
                 curveNormal = angleLineEP1EP2 + Math.PI / 2 * wallCurveAsArc.YDirection.Y;
             }
-
             else
             {
                 concave = true;
@@ -323,14 +314,12 @@ namespace LM2.Revit
             Arc wallCurveAsArc = wallCurve.Curve as Arc;
             Double angleViewtoWall;
 
-
             if ((wallCurveAsArc) != null)
             {
                 double curveNormal = NormalofCurvedWall(w, out bool concave);
 
                 angleViewtoWall = curveNormal - Math.PI;
             }
-
             else
             {
                 XYZ wallNormal = w.Orientation;
@@ -344,7 +333,7 @@ namespace LM2.Revit
 
                 if (wallNormal.Y < 0)
                 {
-                    angleViewtoWall = - angleViewtoWall;
+                    angleViewtoWall = -angleViewtoWall;
                 }
             }
 
@@ -355,7 +344,6 @@ namespace LM2.Revit
 
             return angleViewtoWall;
         }
-
 
         public void RotateMarker(ElevationMarker marker, double angleViewtoWall, XYZ elevMarkerPosition)
         {
@@ -400,7 +388,6 @@ namespace LM2.Revit
             double[] wMaxTMatrix = Matrix.dot(transform, wMaxMatrix);
             XYZ wMaxT = Matrix.matrix2xyz(wMaxTMatrix);
 
-
             double[] originMatrix = Matrix.xyz2matrix(eecb.Transform.Origin);
             double[] originTMatrix = Matrix.dot(transform, originMatrix);
             XYZ originT = Matrix.matrix2xyz(originTMatrix);
@@ -433,7 +420,7 @@ namespace LM2.Revit
             ViewFamilyType viewFamilyType = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewFamilyType))
                 .Cast<ViewFamilyType>()
-                .FirstOrDefault(x => x.ViewFamily == ViewFamily.Elevation && x.Name.ToLower().Contains("exterior") == true);
+                .FirstOrDefault(x => x.ViewFamily == ViewFamily.Elevation && x.Name.ToLower().Contains("立面") == true);
             if (viewFamilyType == null)
             {
                 throw new Exception("Cannot find View Family Type elevation that contains the word 'exterior'");
@@ -442,6 +429,29 @@ namespace LM2.Revit
             return viewFamilyType.Id;
         }
 
+        /// <summary>
+        /// 获取指定的样本视图
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <param name="viewName"></param>
+        /// <returns></returns>
+        public View GetElevationViewTemplate(Document doc, string viewName)
+        {
+            IList<Autodesk.Revit.DB.View> source = new FilteredElementCollector(doc)
+                .OfClass(typeof(View))
+                .Cast<View>()
+                .ToList<View>();
+            List<Autodesk.Revit.DB.View> views = source.ToList<Autodesk.Revit.DB.View>();
+            if (views == null || views.Count < 1) return null;
+            foreach (View view in views)
+            {
+                if (view == null || !view.IsTemplate) continue;
+                if (view.ViewType != ViewType.Elevation) continue;
+
+                if (view.Name == viewName) return view;
+            }
+            return null;
+        }
 
         public ViewPlan DocumentElevPlanViews(Document doc, Wall w)
         {
@@ -449,8 +459,7 @@ namespace LM2.Revit
             ViewPlan vpElevMarker = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewPlan))
                 .Cast<ViewPlan>()
-                .Where(vp => vp.GenLevel.Id == w.LevelId)
-                .FirstOrDefault();
+                .FirstOrDefault(vp => vp.GenLevel != null && vp.GenLevel.Id == w.LevelId);
 
             Debug("selected view plan " + vpElevMarker.Name);
             Debug("selected view plan GenLevel property .id " + vpElevMarker.GenLevel.Id);
