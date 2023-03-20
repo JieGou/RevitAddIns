@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateExteriorElevationsGoa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateLevelsFromExcel", "CreateLevelsFromExcel\CreateLevelsFromExcel.csproj", "{DE00B7D3-267B-474E-A55C-D893DA1646C7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TagMaterialsInteriorElevations", "TagMaterialsInteriorElevations\TagMaterialsInteriorElevations.csproj", "{33BB8550-445E-43D2-8BAA-B7BEB24A7C07}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,10 @@ Global
 		{DE00B7D3-267B-474E-A55C-D893DA1646C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DE00B7D3-267B-474E-A55C-D893DA1646C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DE00B7D3-267B-474E-A55C-D893DA1646C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33BB8550-445E-43D2-8BAA-B7BEB24A7C07}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33BB8550-445E-43D2-8BAA-B7BEB24A7C07}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33BB8550-445E-43D2-8BAA-B7BEB24A7C07}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33BB8550-445E-43D2-8BAA-B7BEB24A7C07}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

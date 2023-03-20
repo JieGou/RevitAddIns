@@ -13,7 +13,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program. If not, see<https://www.gnu.org/licenses/> 
+along with this program. If not, see<https://www.gnu.org/licenses/>
 */
 
 using Autodesk.Revit.ApplicationServices;
@@ -30,10 +30,9 @@ using System.Linq;
 namespace LM2.Revit
 {
     [Transaction(TransactionMode.Manual)]
-
     public class TagMaterialsInteriorElevations : IExternalCommand
     {
-        Autodesk.Revit.ApplicationServices.Application application;
+        private Autodesk.Revit.ApplicationServices.Application application;
 
         //private static Config pluginConfig;
 
@@ -44,7 +43,6 @@ namespace LM2.Revit
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-
             UIDocument UIdoc = commandData.Application.ActiveUIDocument;
             Document doc = UIdoc.Document;
             String pluginName = "Tag Materials in Interior Elevation";
@@ -62,26 +60,26 @@ namespace LM2.Revit
 
             bool dialogResult = true;
 
-           if (dialogResult == true)
-           {
+            if (dialogResult == true)
+            {
                 try
                 {
                     View startingView = UIdoc.ActiveView;
-                    List<ViewSection>  elevViews = GetAllIntElevViews(doc);
-                   
+                    List<ViewSection> elevViews = GetAllIntElevViews(doc);
+
                     foreach (ViewSection v in elevViews)
                     {
                         List<Wall> wallsInView = GetWallsInView(doc, v);
                         Tuple<XYZ, XYZ> elevEndPoints = GetElevEndpoints(v);
 
                         List<ElementId> tagElements = new List<ElementId>();
-                        List<ElementId> invalidElements = new List<ElementId>() { ElementId.InvalidElementId };
+                        List<ElementId> selectedElements = new List<ElementId>() { ElementId.InvalidElementId };
 
                         UIdoc.ActiveView = v;
-                        
+
                         Debug("View Name " + v.Name);
 
-                        foreach(Wall w in wallsInView)
+                        foreach (Wall w in wallsInView)
                         {
                             if (w.CurtainGrid != null)
                             {
@@ -89,7 +87,7 @@ namespace LM2.Revit
                             }
 
                             Debug("Wall ID " + w.Id);
-                            Reference wall = new Reference(w);
+                            Reference wallReference = new Reference(w);
 
                             XYZ tagLocation = GetTagLocation(doc, w, elevEndPoints, v);
                             Debug("Tag Location " + tagLocation);
@@ -98,7 +96,7 @@ namespace LM2.Revit
                             {
                                 continue;
                             }
-
+                            FamilySymbol familySymbolMaterial = doc.GetElement(new ElementId(16326377)) as FamilySymbol;
                             try
                             {
                                 IndependentTag tag;
@@ -106,7 +104,7 @@ namespace LM2.Revit
                                 {
                                     tx.Start("Tag Materials");
 
-                                    tag = IndependentTag.Create(doc, v.Id, wall, false, TagMode.TM_ADDBY_MATERIAL, TagOrientation.Horizontal, tagLocation);
+                                    tag = IndependentTag.Create(doc, v.Id, wallReference, false, TagMode.TM_ADDBY_MATERIAL, TagOrientation.Horizontal, tagLocation);
                                     tagElements.Add(tag.Id);
 
                                     tx.Commit();
@@ -122,19 +120,13 @@ namespace LM2.Revit
                                     tag.LeaderEndCondition = LeaderEndCondition.Free;
                                     tag.TagHeadPosition = tagLocation;
 
-                                    tag.LeaderEnd = new XYZ
-                                        (
-                                        tagLocation.X,
-                                        tagLocation.Y,
-                                        tagLocation.Z + 3
-                                        );
+                                    tag.LeaderEnd = new XYZ(tagLocation.X, tagLocation.Y, tagLocation.Z + 3);
 
                                     Debug("Tag Leader End " + tag.LeaderEnd);
 
                                     tx.Commit();
                                 }
                             }
-
                             catch (Exception ex1)
                             {
                                 message = ex1.ToString();
@@ -144,22 +136,18 @@ namespace LM2.Revit
 
                         //refresh view
                         UIdoc.Selection.SetElementIds(tagElements);
-                        UIdoc.RefreshActiveView(); 
-                        UIdoc.Selection.SetElementIds(invalidElements);
-
+                        UIdoc.RefreshActiveView();
+                        UIdoc.Selection.SetElementIds(selectedElements);
                     }
 
                     UIdoc.ActiveView = startingView;
-
                 }
-
                 catch (Exception ex)
                 {
                     message = ex.ToString();
                     return Result.Failed;
                 }
             }
-
             else
             {
                 return Result.Cancelled;
@@ -170,7 +158,6 @@ namespace LM2.Revit
             //int ROI = timeSavedPerRoom * numRooms;
             //string ROIString;
             //ROIString = string.Format("{0:0.00} hours", ROI / 60f);
-
 
             //String slackMessage2 = $">Completed\n>Rooms in Project: {numRooms} rooms\n>ROI for run: {ROI} minutes ({ROIString}) saved\nData\t{numRooms}\t{ROI}";
 
@@ -186,7 +173,9 @@ namespace LM2.Revit
             List<ViewSection> intElevs = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewSection))
                 .Select(ie => ie as ViewSection)
-                .Where(ie => ie.ViewType == ViewType.Elevation && ie.GetTypeId() == interiorTypeId)
+                .Where(ie => ie.ViewType == ViewType.Elevation
+                                && ie.GetTypeId() == interiorTypeId
+                                && (ie.Id.IntegerValue == 13396778))
                 .ToList();
 
             return intElevs;
@@ -197,16 +186,16 @@ namespace LM2.Revit
             ViewFamilyType viewFamilyTypeInterior = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewFamilyType))
                 .Cast<ViewFamilyType>()
-                .FirstOrDefault(x => x.ViewFamily == ViewFamily.Elevation && x.Name.ToLower().Contains("int"));
+                .FirstOrDefault(x => x.ViewFamily == ViewFamily.Elevation && x.Name.ToLower().Contains("立面"));
             if (viewFamilyTypeInterior == null)
             {
-                throw new Exception("Cannot find View Family Type containing name 'int'.");
+                throw new Exception("Cannot find View Family Type containing name '立面'.");
             }
 
             return viewFamilyTypeInterior.Id;
         }
 
-        public Tuple<XYZ, XYZ> GetElevEndpoints (ViewSection view)
+        public Tuple<XYZ, XYZ> GetElevEndpoints(ViewSection view)
         {
             XYZ vpMin = view.CropBox.Min;
             XYZ vpMax = view.CropBox.Max;
@@ -214,15 +203,9 @@ namespace LM2.Revit
             Debug("vpMin " + vpMin);
             Debug("vpMax " + vpMax);
 
-            XYZ endpoint1 = new XYZ(
-                vpMin.X,
-                vpMin.Y,
-                vpMax.Z);
+            XYZ endpoint1 = new XYZ(vpMin.X, vpMin.Y, vpMax.Z);
 
-            XYZ endpoint2 = new XYZ(
-                vpMax.X,
-                vpMin.Y,
-                vpMax.Z);
+            XYZ endpoint2 = new XYZ(vpMax.X, vpMin.Y, vpMax.Z);
 
             Tuple<XYZ, XYZ> viewEndpoints = new Tuple<XYZ, XYZ>(endpoint1, endpoint2);
 
@@ -235,9 +218,14 @@ namespace LM2.Revit
         public List<Wall> GetWallsInView(Document doc, ViewSection view)
         {
             List<Wall> walls = new FilteredElementCollector(doc, view.Id)
-                .OfClass(typeof(Wall))
+                .OfCategory(BuiltInCategory.OST_Walls)
+                .WhereElementIsNotElementType()
                 .Cast<Wall>()
+                .Where(x => x.WallType.FamilyName == "基本墙" &&
+                x.CreatedPhaseId != null && (doc.GetElement(x.CreatedPhaseId) as Phase).Name == "精装")
                 .ToList();
+
+            walls = walls.GetParallerWalls(view.ViewDirection);
 
             return walls;
         }
@@ -296,7 +284,6 @@ namespace LM2.Revit
                 return null;
             }
 
-
             Debug("newep1 " + newep1);
             Debug("newep2 " + newep2);
 
@@ -314,13 +301,109 @@ namespace LM2.Revit
 
             Debug("center " + center);
 
-            XYZ location = new XYZ (
-                center.X,
-                center.Y,
-                center.Z - 2);
+            XYZ location = new XYZ(center.X, center.Y, center.Z /*- 2*/);
 
             return location;
         }
+    }
 
+    public static class Extend
+    {
+        /// <summary>
+        /// 获取与指定方向相同的墙集合
+        /// </summary>
+        /// <param name="listViewWall"></param>
+        /// <param name="direction"></param>
+        /// <returns></returns>
+        public static List<Wall> GetParallerWalls(this List<Wall> listViewWall, XYZ direction)
+        {
+            var walls = new List<Wall>();
+            foreach (var w in listViewWall)
+            {
+                try
+                {
+                    var vector = w.Orientation;
+                    if (vector != null && vector.IsParallerWith(direction))
+                    {
+                        walls.Add(w);
+                    }
+                }
+                catch (Exception)
+                {
+                    continue;
+                }
+            }
+            return walls;
+        }
+    }
+
+    public static class XyzExtend
+    {
+        /// <summary>
+        /// 两个向量是否为同一方向
+        /// </summary>
+        /// <param name="source">自身向量</param>
+        /// <param name="target">目标向量</param>
+        /// <param name="tolerance">容差</param>
+        /// <returns></returns>
+        public static bool IsSameDirectionWith(this XYZ source, XYZ target, double tolerance = 1e-6)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (target is null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+            return source.AngleTo(target) <= Math.Abs(tolerance);
+        }
+
+        /// <summary>
+        /// 两个向量是否平行
+        /// </summary>
+        /// <param name="source">自身向量</param>
+        /// <param name="target">目标向量</param>
+        /// <param name="tolerance">容差</param>
+        /// <param name="considerZeroVector">是否考虑零向量</param>
+        /// <returns></returns>
+        public static bool IsParallerWith(this XYZ source, XYZ target, double tolerance = 1e-6, bool considerZeroVector = false)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (target is null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+            return (considerZeroVector && (source.IsZeroLength() || target.IsZeroLength())) ||
+                source.IsSameDirectionWith(target, tolerance) ||
+                source.IsOppositeDirectionWith(target, tolerance);
+        }
+
+        /// <summary>
+        /// 两向量是否为相反的方向
+        /// </summary>
+        /// <param name="source">自身向量</param>
+        /// <param name="target">目标向量</param>
+        /// <param name="tolerance">容差</param>
+        /// <returns></returns>
+        public static bool IsOppositeDirectionWith(this XYZ source, XYZ target, double tolerance = 1e-6)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (target is null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            return source.AngleTo(target.Negate()) <= Math.Abs(tolerance);
+        }
     }
 }

@@ -9,9 +9,10 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>LM2.Revit</RootNamespace>
     <AssemblyName>CreateExteriorElevationsGoal1</AssemblyName>
-    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -76,10 +77,10 @@
   </PropertyGroup> -->
   <ItemGroup>
     <PackageReference Include="Revit.RevitApi.x64">
-      <Version>2019.0.0</Version>
+      <Version>2022.0.0</Version>
     </PackageReference>
     <PackageReference Include="Revit.RevitApiUI.x64">
-      <Version>2019.0.0</Version>
+      <Version>2022.0.0</Version>
     </PackageReference>
   </ItemGroup>
 </Project>
