@@ -128,9 +128,8 @@ namespace LM2.Revit
             if ((wallCurve.Curve as Arc) != null)
             {
                 Arc wc = wallCurve.Curve as Arc;
-                bool concave;
                 //multiply by YDirection to accomidate for curved walls drawn endpoint(1) to endpoint(0)
-                double wNormalAngle = NormalofCurvedWall(w, out concave);
+                double wNormalAngle = NormalofCurvedWall(w, out bool concave);
                 XYZ CWEP1 = wallCurve.Curve.GetEndPoint(0);
                 XYZ CWEP2 = wallCurve.Curve.GetEndPoint(1);
                 this.Debug("CWEP1" + CWEP1);
@@ -189,10 +188,7 @@ namespace LM2.Revit
                 XYZ EP1 = wallCurve.Curve.GetEndPoint(0);
                 XYZ EP2 = wallCurve.Curve.GetEndPoint(1);
 
-                wallCenter = new XYZ(
-                    (EP1.X + EP2.X) / 2,
-                    (EP1.Y + EP2.Y) / 2,
-                    EP1.Z);
+                wallCenter = new XYZ((EP1.X + EP2.X) / 2, (EP1.Y + EP2.Y) / 2, EP1.Z);
                 this.Debug("wall center line" + wallCenter);
 
                 this.Debug("wall center" + wallCenter);
@@ -378,7 +374,7 @@ namespace LM2.Revit
             );
 
             double[][] transform = Matrix.transform2matrix(eecb.Transform);
-            double[][] transformInv = Matrix.invert(transform);
+            //double[][] transformInv = Matrix.invert(transform);
 
             double[] wMinMatrix = Matrix.xyz2matrix(wmin);
             double[] wMinTMatrix = Matrix.dot(transform, wMinMatrix);
@@ -392,20 +388,10 @@ namespace LM2.Revit
             double[] originTMatrix = Matrix.dot(transform, originMatrix);
             XYZ originT = Matrix.matrix2xyz(originTMatrix);
 
-            XYZ wMinTOrdered;
-            XYZ wMaxTOrdered;
-            Utility.ReorderMinMax(wMinT, wMaxT, out wMinTOrdered, out wMaxTOrdered);
+            Utility.ReorderMinMax(wMinT, wMaxT, out XYZ wMinTOrdered, out XYZ wMaxTOrdered);
 
-            XYZ wbbboundsmin = new XYZ(
-                wMinTOrdered.X - originT.X,
-                wMinTOrdered.Y - originT.Y,
-                cbboundsmin.Z
-            );
-            XYZ wbbboundsmax = new XYZ(
-                wMaxTOrdered.X - originT.X,
-                wMaxTOrdered.Y - originT.Y - 0.01,
-                cbboundsmax.Z
-            );
+            XYZ wbbboundsmin = new XYZ(wMinTOrdered.X - originT.X, wMinTOrdered.Y - originT.Y, cbboundsmin.Z);
+            XYZ wbbboundsmax = new XYZ(wMaxTOrdered.X - originT.X, wMaxTOrdered.Y - originT.Y - 0.01, cbboundsmax.Z);
 
             eecb.set_Bounds(0, wbbboundsmin);
             eecb.set_Bounds(1, wbbboundsmax);
